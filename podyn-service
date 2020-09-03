@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+# podyn     Startup script for the podyn server 
+#
+# chkconfig: - 85 15
+# description: podyn syncer
+#
+# processname: podyn
+
+. /lib/lsb/init-functions
+
+start(){
+	echo -n "Starting "
+    /app/launch.sh &> /app/podyn.log & 
+	[ $? -eq 0 ] && echo " [ OK ] " || echo " [ FAILED ] "
+}
+
+stop(){
+	echo -n "Stopping "
+    /app/stop.sh podyn.jar 
+	[ $? -eq 0 ] && echo " [ OK ] " || echo " [ FAILED ] "
+}
+
+status(){
+    if ps aux | grep -v "grep" | grep "podyn.jar"
+    then
+	    echo -n "Running "
+    else
+    	echo -n "Stopped "
+    fi
+}
+
+case "$1" in
+    start)
+            start 
+            ;;
+    stop)
+            stop 
+            ;;
+    restart)
+            stop
+            start
+            ;;
+    status)
+            status
+            ;;
+    *)
+            echo $"Usage: $0 {start|stop|restart|status}" 
+esac
