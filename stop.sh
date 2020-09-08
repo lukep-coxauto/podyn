@@ -1,11 +1,11 @@
 #!/bin/bash
 
-if ps aux | grep -v "grep" | grep "$@"
+if ps aux | grep -v "grep" | grep "podyn.jar"
 then
-    echo "\"$@\" is still running"
+    echo "podyn.jar is still running"
 
     # Getting the PID of the process
-    PID=`pgrep -f $@`
+    PID=`pgrep -f "podyn.jar"`
 
     # Number of seconds to wait before using "kill -9"
     WAIT_SECONDS=10
@@ -32,7 +32,9 @@ then
             break
         fi
     done
-    echo "Process has been killed after $count seconds."    
+    echo "Process has been killed after $count seconds. Sleeping 5 seconds"
+    sleep 5
+    echo "podyn.jar is stopped"
 else
-   echo "\"$@\" is stopped"
+   echo "podyn.jar is stopped"
 fi
