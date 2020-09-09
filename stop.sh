@@ -2,7 +2,7 @@
 
 if ps aux | grep -v "grep" | grep "podyn.jar"
 then
-    echo "podyn.jar is still running"
+    echo "podyn.jar is still running" &>> /app/podyn.log
 
     # Getting the PID of the process
     PID=`pgrep -f "podyn.jar"`
@@ -32,9 +32,9 @@ then
             break
         fi
     done
-    echo "Process has been killed after $count seconds. Sleeping 5 seconds"
-    sleep 5
-    echo "podyn.jar is stopped"
+    echo "Process has been killed after $count seconds. Sleeping 1 seconds" &>> /app/podyn.log
+    sleep 1
+    echo "podyn.jar is stopped" &>> /app/podyn.log
 else
-   echo "podyn.jar is stopped"
+   echo "podyn.jar is stopped" &>> /app/podyn.log
 fi

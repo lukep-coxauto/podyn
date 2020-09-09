@@ -1,1 +1,1 @@
-0 16 * * * root /app/stop.sh >> /app/podyn.log ; /app/launch.sh
+0 16 * * * root /app/stop.sh ; /app/launch.sh
