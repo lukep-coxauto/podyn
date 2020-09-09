@@ -29,7 +29,7 @@ echo "else" >> ./launch.sh
 echo "    echo \"starting podyn.jar ${@} &>> /app/podyn.log\"" >> ./launch.sh
 echo "    java -jar /app/podyn.jar --postgres-jdbc-url \"${POSTGRES_JDBC_URL}\" $DYNAMODB_OPTS ${@} &>> /app/podyn.log &" >> ./launch.sh
 echo "    if [ \"$SLACK\" != \"\" ]; then" >> ./launch.sh
-echo "        curl -X POST --data-urlencode 'payload={\"username\":\"podyn\",\"channel\":\"test\",\"icon_url\":\"\",\"attachments\":[{\"color\":\"#4183c4\",\"text\":\"Launching podyn ${AWS_REGION}\",\"footer\":\"\"}]}' $SLACK" >> ./launch.sh
+echo "        curl -X POST --data-urlencode 'payload={\"username\":\"podyn\",\"channel\":\"developers\",\"icon_url\":\"\",\"attachments\":[{\"color\":\"#4183c4\",\"text\":\"Launching podyn ${AWS_REGION}\",\"footer\":\"\"}]}' $SLACK" >> ./launch.sh
 echo "    fi" >> ./launch.sh
 echo "fi" >> ./launch.sh
 
