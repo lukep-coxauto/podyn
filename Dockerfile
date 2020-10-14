@@ -16,9 +16,8 @@ RUN sed -i '/imklog/s/^/#/' /etc/rsyslog.conf
 
 COPY --from=builder "/app/target/podyn-${APP_VERSION}.jar" /app/podyn.jar
 
-COPY podyn-cron /etc/cron.d/podyn-cron
-RUN chmod 0644 /etc/cron.d/podyn-cron
-# RUN crontab /etc/cron.d/podyn-cron
+#COPY podyn-cron /etc/cron.d/podyn-cron
+#RUN chmod 0644 /etc/cron.d/podyn-cron
 
 RUN touch /var/log/cron.log
 
