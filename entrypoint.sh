@@ -57,6 +57,6 @@ else
     service cron stop
 
     echo "Podyn COPY" >> /app/podyn.log
-    /app/launch.sh
+    java -jar /app/podyn.jar --postgres-jdbc-url "${POSTGRES_JDBC_URL}" $DYNAMODB_OPTS ${@}
 fi
 echo "entrypoint terminated with $?"
