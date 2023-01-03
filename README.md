@@ -29,6 +29,7 @@ Once you've built the JAR, you can run it as follows.
 usage: podyn
  -c,--changes                    Continuously replicate changes
  -d,--data                       Replicate the current data
+ -e,--ddb-endpoint               DynamoDB endpoint
  -h,--help                       Show help
  -lc,--lower-case-column-names   Use lower case column names
  -m,--conversion-mode <arg>      Conversion mode, either columns or jsonb (default: columns)

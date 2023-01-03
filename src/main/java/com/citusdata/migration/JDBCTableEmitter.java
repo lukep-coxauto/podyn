@@ -13,6 +13,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.postgresql.copy.CopyManager;
 import org.postgresql.core.BaseConnection;
 
@@ -28,6 +30,8 @@ import com.citusdata.migration.datamodel.TableSchema;
  *
  */
 public class JDBCTableEmitter implements TableEmitter {
+
+	private static final Log LOG = LogFactory.getLog(JDBCTableEmitter.class);
 
 	final String DESCRIBE_TABLE_SQL = ""
 			+ "SELECT "
@@ -69,30 +73,37 @@ public class JDBCTableEmitter implements TableEmitter {
 			+ "WHERE "
 			+ "  logicalrelid = ?::regclass";	
 
-	final Connection currentConnection;
+	Connection currentConnection;
+	String connectionUrl;
 	final PreparedStatement describeTableStatement;
 	final PreparedStatement hasCitusStatement;
 	final PreparedStatement distributionColumnStatement;
+	final boolean escapePeriods;
 
-	public JDBCTableEmitter(String url) throws SQLException {
-		this(DriverManager.getConnection(url));
+	public JDBCTableEmitter(String url, boolean escapePeriods) throws SQLException {
+		this(DriverManager.getConnection(url), escapePeriods);
+		this.connectionUrl = url;
 	}
 	
-	public JDBCTableEmitter(Connection connection) throws SQLException {
+	public JDBCTableEmitter(Connection connection, boolean escapePeriods) throws SQLException {
 		this.currentConnection = connection;
 		this.describeTableStatement = currentConnection.prepareStatement(DESCRIBE_TABLE_SQL);
 		this.hasCitusStatement = currentConnection.prepareStatement(HAS_CITUS_SQL);
 		this.distributionColumnStatement = currentConnection.prepareStatement(DISTRIBUTION_COLUMN_SQL);
+		this.escapePeriods = escapePeriods;
 	}
 
 	public synchronized TableSchema fetchSchema(String tableName) {
 		try {
+			if (this.escapePeriods) {
+				tableName = tableName.replace('.', '_');
+			}
 			describeTableStatement.setString(1, tableName);
 
 			ResultSet describeTableResults = describeTableStatement.executeQuery();
 
 			if (describeTableResults.next()) {
-				TableSchema tableSchema = new TableSchema(tableName);
+				TableSchema tableSchema = new TableSchema(tableName, null, this.escapePeriods);
 				List<String> primaryKeyColumns = new ArrayList<>();
 
 				do {
@@ -191,13 +202,28 @@ public class JDBCTableEmitter implements TableEmitter {
 		}
 	}
 
-	public synchronized void upsert(TableRow tableRow) {
+	private synchronized void doUpsert(TableRow tableRow, boolean retry) {
 		try {
 			Statement statement = currentConnection.createStatement();
 			statement.execute(tableRow.toUpsert());
 		} catch (SQLException e) {
-			throw new EmissionException(e);
+			// For a connection closed error, retry after re-creating the connection
+			if (retry && this.connectionUrl != null && e.getMessage().indexOf("connection") >= 0) {
+				LOG.info("Connection error. Retrying with new connection");
+				try {
+					this.currentConnection = DriverManager.getConnection(this.connectionUrl);
+				} catch (SQLException ex) {
+					throw new EmissionException(ex);
+				}
+				this.doUpsert(tableRow, false);
+			} else {
+				throw new EmissionException(e);
+			}
 		}
+	}
+
+	public synchronized void upsert(TableRow tableRow) {
+		this.doUpsert(tableRow, true);
 	}
 
 	public synchronized void delete(PrimaryKeyValue primaryKeyValue) {

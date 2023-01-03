@@ -22,17 +22,31 @@ public class TableSchema {
 	private TableColumn distributionColumn;
 	private List<String> primaryKey;
 	private List<TableIndex> tableIndexes;
+	private boolean escapePeriods;
 
 	public TableSchema(String tableName) {
-		this(tableName, null);
+		this(tableName, null, false);
 	}
 
-	public TableSchema(String tableName, String schemaName) {
+	public TableSchema(String tableName, String schemaName, boolean escapePeriods) {
 		this.tableName = tableName;
 		this.schemaName = schemaName;
 		this.columns = new LinkedHashMap<>();
 		this.primaryKey = null;
 		this.tableIndexes = new ArrayList<>();
+		this.escapePeriods = escapePeriods;
+	}
+
+	String sqlTableName() {
+		return this.getEscapedName(this.tableName);
+	}
+
+	String getEscapedName(String name) {
+		if (escapePeriods) {
+			return name.replace('.', '_');
+		} else {
+			return name;
+		}
 	}
 
 	public TableRow createRow() {
@@ -81,7 +95,7 @@ public class TableSchema {
 	}
 
 	public void addIndex(String indexName, List<String> indexColumns) {
-		this.tableIndexes.add(new TableIndex(this.tableName, indexName, indexColumns));
+		this.tableIndexes.add(new TableIndex(this.sqlTableName(), this.getEscapedName(this.tableName + '_' + indexName), indexColumns));
 	}
 
 	public static boolean requiresQuotes(String identifier) {
@@ -116,7 +130,7 @@ public class TableSchema {
 			sb.append('.');
 		}
 
-		sb.append(quoteIdentifier(tableName));
+		sb.append(quoteIdentifier(sqlTableName()));
 
 		return sb.toString();
 	}

@@ -89,6 +89,7 @@ public class DynamoDBTableReplicator {
 	boolean addColumnsEnabled;
 	boolean useCitus;
 	boolean useLowerCaseColumnNames;
+	boolean escapePeriods;
 	ConversionMode conversionMode;
 
 	TableSchema tableSchema;
@@ -109,6 +110,7 @@ public class DynamoDBTableReplicator {
 		this.addColumnsEnabled = true;
 		this.useCitus = false;
 		this.useLowerCaseColumnNames = false;
+		this.escapePeriods = false;
 		this.tableSchema = emitter.fetchSchema(this.dynamoTableName);
 	}
 
@@ -122,6 +124,10 @@ public class DynamoDBTableReplicator {
 
 	public void setUseLowerCaseColumnNames(boolean useLowerCaseColumnNames) {
 		this.useLowerCaseColumnNames = useLowerCaseColumnNames;
+	}
+
+	public void setEscapePeriods(boolean escapePeriods) {
+		this.escapePeriods = escapePeriods;
 	}
 
 	public void setConversionMode(ConversionMode conversionMode) {
@@ -146,7 +152,7 @@ public class DynamoDBTableReplicator {
 	}
 
 	TableSchema fetchSourceSchema() {
-		TableSchema tableSchema = new TableSchema(dynamoTableName);
+		TableSchema tableSchema = new TableSchema(dynamoTableName, null, this.escapePeriods);
 
 		DescribeTableResult describeTableResult = dynamoDBClient.describeTable(dynamoTableName);
 		TableDescription tableDescription = describeTableResult.getTable();
@@ -262,8 +268,8 @@ public class DynamoDBTableReplicator {
 			}
 
 			// Account for the rest of the throughput we consumed, 
-			// now that we know how much that scan request cost 
-			double consumedCapacity = scanResult.getConsumedCapacity().getCapacityUnits();
+			// now that we know how much that scan request cost
+			double consumedCapacity = scanResult.getConsumedCapacity() != null ? scanResult.getConsumedCapacity().getCapacityUnits() : 0;
 			int permitsToConsume = (int)(consumedCapacity - 1.0);
 			if (permitsToConsume <= 0) {
 				permitsToConsume = 1;

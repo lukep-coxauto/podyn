@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
@@ -81,6 +82,10 @@ public class DynamoDBReplicator {
 		lowerCaseColumnsOption.setRequired(false);
 		options.addOption(lowerCaseColumnsOption);
 
+		Option escapePeriodsOption = new Option("ep", "escape-periods", false, "Escape periods in table names");
+		escapePeriodsOption.setRequired(false);
+		options.addOption(escapePeriodsOption);
+
 		Option numConnectionsOption = new Option("n", "num-connections", true, "Database connection pool size (default 16)");
 		numConnectionsOption.setRequired(false);
 		options.addOption(numConnectionsOption);
@@ -88,6 +93,10 @@ public class DynamoDBReplicator {
 		Option maxScanRateOption = new Option("r", "scan-rate", true, "Maximum reads/sec during scan (default 25)");
 		maxScanRateOption.setRequired(false);
 		options.addOption(maxScanRateOption);
+
+		Option dynamoEndpointOption = new Option("e", "ddb-endpoint", true, "DynamoDB endpoint");
+		dynamoEndpointOption.setRequired(false);
+		options.addOption(dynamoEndpointOption);
 
 		CommandLineParser parser = new DefaultParser();
 		HelpFormatter formatter = new HelpFormatter();
@@ -108,11 +117,13 @@ public class DynamoDBReplicator {
 
 			boolean useCitus = cmd.hasOption("citus");
 			boolean useLowerCaseColumnNames = cmd.hasOption("lower-case-column-names");
+			boolean escapePeriods = cmd.hasOption("escape-periods");
 			int maxScanRate = Integer.parseInt(cmd.getOptionValue("scan-rate", "25"));
 			int dbConnectionCount = Integer.parseInt(cmd.getOptionValue("num-connections", "16"));
 			String tableNamesString = cmd.getOptionValue("table");
 			String postgresURL = cmd.getOptionValue("postgres-jdbc-url");
 			String conversionModeString = cmd.getOptionValue("conversion-mode", ConversionMode.columns.name());
+			String ddbEndpoint = cmd.getOptionValue("ddb-endpoint");
 
 			ConversionMode conversionMode;
 
@@ -124,13 +135,20 @@ public class DynamoDBReplicator {
 
 			AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
 
-			AmazonDynamoDB dynamoDBClient = AmazonDynamoDBClientBuilder.standard().
-					withCredentials(credentialsProvider).
-					build();
+			AmazonDynamoDBClientBuilder dynamoDBBuilder = AmazonDynamoDBClientBuilder.standard().
+					withCredentials(credentialsProvider);
 
-			AmazonDynamoDBStreams streamsClient = AmazonDynamoDBStreamsClientBuilder.standard().
-					withCredentials(credentialsProvider).
-					build();
+			AmazonDynamoDBStreamsClientBuilder streamsBuilder = AmazonDynamoDBStreamsClientBuilder.standard().
+					withCredentials(credentialsProvider);
+
+			if (ddbEndpoint != null) {
+				AwsClientBuilder.EndpointConfiguration endpoint = new AwsClientBuilder.EndpointConfiguration(ddbEndpoint, System.getenv().get("AWS_REGION"));
+				dynamoDBBuilder.withEndpointConfiguration(endpoint);
+				streamsBuilder.withEndpointConfiguration(endpoint);
+			}
+
+			AmazonDynamoDB dynamoDBClient = dynamoDBBuilder.build();
+			AmazonDynamoDBStreams streamsClient = streamsBuilder.build();
 
 			final TableEmitter emitter;
 
@@ -138,7 +156,7 @@ public class DynamoDBReplicator {
 				List<TableEmitter> emitters = new ArrayList<>();
 
 				for(int i = 0; i < dbConnectionCount; i++) {
-					emitters.add(new JDBCTableEmitter(postgresURL));
+					emitters.add(new JDBCTableEmitter(postgresURL, escapePeriods));
 				}
 
 				emitter = new HashedMultiEmitter(emitters);
@@ -177,6 +195,7 @@ public class DynamoDBReplicator {
 				replicator.setAddColumnEnabled(true);
 				replicator.setUseCitus(useCitus);
 				replicator.setUseLowerCaseColumnNames(useLowerCaseColumnNames);
+				replicator.setEscapePeriods(escapePeriods);
 				replicator.setConversionMode(conversionMode);
 
 				replicators.add(replicator);
